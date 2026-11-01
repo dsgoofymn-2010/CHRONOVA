@@ -7,25 +7,59 @@ const KEYS = Object.keys(DEFAULT_POSE);
 const smooth = (t) => t * t * (3 - 2 * t);
 const lerp = (a, b, t) => a + (b - a) * t;
 
-// Dark studio with a few softboxes: gives metal crisp, contrasty reflections.
+// Softbox face: bright centre falling off to the edges, like diffusion fabric.
+function softboxTexture() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 256;
+  const g = c.getContext('2d');
+  const gr = g.createRadialGradient(128, 128, 10, 128, 128, 128);
+  gr.addColorStop(0, '#ffffff');
+  gr.addColorStop(0.65, '#d8d8d8');
+  gr.addColorStop(0.92, '#6a6a6a');
+  gr.addColorStop(1, '#000000');
+  g.fillStyle = gr;
+  g.fillRect(0, 0, 256, 256);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
+// Product-photography studio: dark walls, a large overhead softbox, tall strip lights
+// for the long highlights on polished steel, and a warm bounce card from below.
 function studioEnvironment() {
   const s = new THREE.Scene();
-  s.add(new THREE.Mesh(new THREE.SphereGeometry(30, 32, 16), new THREE.MeshBasicMaterial({ color: '#08080a', side: THREE.BackSide })));
+  const c = document.createElement('canvas');
+  c.width = 4;
+  c.height = 256;
+  const g = c.getContext('2d');
+  const gr = g.createLinearGradient(0, 0, 0, 256);
+  gr.addColorStop(0, '#4a4c52');
+  gr.addColorStop(0.45, '#1c1d21');
+  gr.addColorStop(1, '#0a0a0c');
+  g.fillStyle = gr;
+  g.fillRect(0, 0, 4, 256);
+  const sky = new THREE.CanvasTexture(c);
+  sky.colorSpace = THREE.SRGBColorSpace;
+  s.add(new THREE.Mesh(new THREE.SphereGeometry(30, 48, 24), new THREE.MeshBasicMaterial({ map: sky, side: THREE.BackSide })));
+
+  const face = softboxTexture();
   const box = (w, h, pos, k, color = '#ffffff') => {
     const m = new THREE.Mesh(
       new THREE.PlaneGeometry(w, h),
-      new THREE.MeshBasicMaterial({ color: new THREE.Color(color).multiplyScalar(k), side: THREE.DoubleSide })
+      new THREE.MeshBasicMaterial({ map: face, color: new THREE.Color(color).multiplyScalar(k), side: THREE.DoubleSide })
     );
     m.position.set(...pos);
     m.lookAt(0, 0, 0);
     s.add(m);
   };
-  box(16, 2.4, [0, 10, 5], 3.2);
-  box(2.2, 14, [-11, 0, 4], 2.2);
-  box(1.6, 14, [11, 1, -1], 1.6);
-  box(10, 6, [0, -2, 14], 0.35);
-  box(9, 1.2, [0, -10, 3], 0.9, '#ffb070');
-  box(3, 3, [6, 6, 9], 1.4);
+  box(18, 8, [0, 11, 4], 3.6);
+  box(4, 18, [-11, 1, 5], 2.8);
+  box(3, 18, [11, 0, -2], 2.2);
+  box(2, 16, [8, 2, 10], 1.8);
+  box(16, 9, [0, 0, 15], 0.9);
+  box(6, 10, [-9, -4, 9], 0.7);
+  box(10, 2, [0, -11, 4], 0.8, '#ffc08a');
+  box(4, 4, [-6, 7, 10], 1.2);
   return s;
 }
 
@@ -38,9 +72,13 @@ export class Stage {
     this.pointer = { x: 0, y: 0, sx: 0, sy: 0 };
 
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    // Neutral tone mapping keeps metal colours true (gold stays gold); ACES on older three.
+    renderer.toneMapping = THREE.NeutralToneMapping ?? THREE.ACESFilmicToneMapping;
+    // Contact shadows from hands, wheels and bridges are what make the movement read as solid.
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFShadowMap;
     renderer.setClearColor(0x000000, 0);
     renderer.autoClear = false;
     this.renderer = renderer;
@@ -53,8 +91,12 @@ export class Stage {
     this.camera = new THREE.PerspectiveCamera(28, 1, 0.1, 100);
     this.camera.position.set(0, 0, 12);
 
-    this.key = new THREE.DirectionalLight('#ffffff', 2.4);
-    this.key.position.set(3, 5, 7);
+    this.key = new THREE.DirectionalLight('#ffffff', 2.2);
+    this.keyDir = new THREE.Vector3(3, 5, 7).normalize();
+    this.key.position.copy(this.keyDir);
+    this.key.castShadow = true;
+    this.key.shadow.mapSize.set(2048, 2048);
+    this.key.shadow.radius = 3;
     this.rim = new THREE.DirectionalLight('#ffffff', 1.6);
     this.rim.position.set(-6, 2, -2);
     this.under = new THREE.DirectionalLight('#ffffff', 0.5);
@@ -63,6 +105,7 @@ export class Stage {
 
     this.watch = buildWatch();
     this.scene.add(this.watch.root);
+    this.key.target = this.watch.root;
 
     this.pose = { ...DEFAULT_POSE, ...TIMELINE[0] };
     this.place = null; // smoothed {x, y, s, clip:{x,y,w,h}}
@@ -196,6 +239,8 @@ export class Stage {
       0
     );
 
+    this.fitShadow(s);
+
     this.key.color.copy(this.white).lerp(this.warmC, p.warm * 0.5);
     this.rim.color.copy(this.white).lerp(this.warmC, p.warm).lerp(this.coolC, p.cool);
     this.rim.intensity = 1.6 + p.cool * 2.5 + p.warm * 1.2;
@@ -237,6 +282,23 @@ export class Stage {
       el.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0)`;
       el.style.opacity = (inside ? p.hot : 0).toFixed(3);
     }
+  }
+
+  // Keep the shadow frustum wrapped tightly around the watch at its current scale.
+  fitShadow(s) {
+    const root = this.watch.root;
+    const half = 3.4 * s;
+    this.key.position.copy(root.position).addScaledVector(this.keyDir, 8 * s);
+    const cam = this.key.shadow.camera;
+    cam.left = -half;
+    cam.right = half;
+    cam.top = half;
+    cam.bottom = -half;
+    cam.near = 0.5 * s;
+    cam.far = 16 * s;
+    cam.updateProjectionMatrix();
+    this.key.shadow.bias = -0.0004;
+    this.key.shadow.normalBias = 0.004 * s;
   }
 
   dispose() {
