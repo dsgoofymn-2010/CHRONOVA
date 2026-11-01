@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, MotionConfig } from 'framer-motion';
 import Lenis from 'lenis';
-import { Stage } from './scene/Stage.js';
 import Loader from './components/Loader.jsx';
 import Hud from './components/Hud.jsx';
 import Backdrops from './components/Backdrops.jsx';
@@ -15,6 +14,7 @@ export default function App() {
   const lenisRef = useRef(null);
   const pending = useRef({ backdrops: {}, hotspots: {} });
   const [loading, setLoading] = useState(!reduced);
+  const [sceneReady, setSceneReady] = useState(false);
   const ready = !loading;
 
   // Elements can mount before the WebGL stage exists, so queue them.
@@ -33,18 +33,26 @@ export default function App() {
     if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
     window.scrollTo(0, 0);
     let stage;
-    try {
-      stage = new Stage(canvasRef.current, { reducedMotion: reduced });
-    } catch (err) {
-      console.warn('WebGL unavailable', err);
-      return;
-    }
-    stageRef.current = stage;
-    for (const [k, el] of Object.entries(pending.current.backdrops)) stage.registerBackdrop(k, el);
-    for (const [k, el] of Object.entries(pending.current.hotspots)) stage.registerHotspot(k, el);
-    // Fonts change layout; re-measure once they land.
-    document.fonts?.ready.then(() => stage.measure());
-    return () => stage.dispose();
+    let cancelled = false;
+    // three.js loads as its own chunk, so the page and opening video appear first.
+    import('./scene/Stage.js')
+      .then(({ Stage }) => {
+        if (cancelled) return;
+        stage = new Stage(canvasRef.current, { reducedMotion: reduced });
+        stageRef.current = stage;
+        for (const [k, el] of Object.entries(pending.current.backdrops)) stage.registerBackdrop(k, el);
+        for (const [k, el] of Object.entries(pending.current.hotspots)) stage.registerHotspot(k, el);
+        // Fonts change layout; re-measure once they land.
+        document.fonts?.ready.then(() => stage.measure());
+        // Shaders keep compiling in the background: the watch is hidden behind the
+        // opening video, so there's no need to hold the loading screen for them.
+      })
+      .catch((err) => console.warn('WebGL unavailable', err))
+      .finally(() => !cancelled && setSceneReady(true));
+    return () => {
+      cancelled = true;
+      stage?.dispose();
+    };
   }, []);
 
   useEffect(() => {
@@ -59,9 +67,14 @@ export default function App() {
 
   useEffect(() => {
     const l = lenisRef.current;
-    if (!l) return;
-    loading ? l.stop() : l.start();
-  }, [loading]);
+    if (l) loading ? l.stop() : l.start();
+    if (loading || !sceneReady) return;
+    // Prepare the watch's shaders while the opening video plays.
+    const idle = window.requestIdleCallback || ((f) => setTimeout(f, 300));
+    // Wait for the loading screen's exit animation to finish first.
+    const t = setTimeout(() => idle(() => stageRef.current?.warmUp()), 1200);
+    return () => clearTimeout(t);
+  }, [loading, sceneReady]);
 
   const go = useCallback((id) => {
     const el = document.getElementById(id);
@@ -90,7 +103,7 @@ export default function App() {
         <Reserve />
       </main>
       <Footer />
-      <AnimatePresence>{loading && <Loader key="loader" onDone={() => setLoading(false)} />}</AnimatePresence>
+      <AnimatePresence>{loading && <Loader key="loader" ready={sceneReady} onDone={() => setLoading(false)} />}</AnimatePresence>
     </MotionConfig>
   );
 }

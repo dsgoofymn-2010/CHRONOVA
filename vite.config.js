@@ -6,5 +6,11 @@ import { viteSingleFile } from 'vite-plugin-singlefile';
 export default defineConfig(({ mode }) => ({
   base: './',
   plugins: [react(), ...(mode === 'single' ? [viteSingleFile()] : [])],
-  build: { outDir: mode === 'single' ? 'dist-single' : 'dist' },
+  build: {
+    outDir: mode === 'single' ? 'dist-single' : 'dist',
+    rollupOptions:
+      mode === 'single'
+        ? {}
+        : { output: { manualChunks: { three: ['three'], motion: ['framer-motion', 'lenis'], react: ['react', 'react-dom'] } } },
+  },
 }));

@@ -72,7 +72,7 @@ export class Stage {
     this.pointer = { x: 0, y: 0, sx: 0, sy: 0 };
 
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     // Neutral tone mapping keeps metal colours true (gold stays gold); ACES on older three.
     renderer.toneMapping = THREE.NeutralToneMapping ?? THREE.ACESFilmicToneMapping;
@@ -95,7 +95,8 @@ export class Stage {
     this.keyDir = new THREE.Vector3(3, 5, 7).normalize();
     this.key.position.copy(this.keyDir);
     this.key.castShadow = true;
-    this.key.shadow.mapSize.set(2048, 2048);
+    const sm = window.innerWidth < 900 ? 1024 : 2048;
+    this.key.shadow.mapSize.set(sm, sm);
     this.key.shadow.radius = 3;
     this.rim = new THREE.DirectionalLight('#ffffff', 1.6);
     this.rim.position.set(-6, 2, -2);
@@ -126,7 +127,40 @@ export class Stage {
     this.ro = new ResizeObserver(() => this.measure());
     this.ro.observe(document.body);
     this.onResize();
+    // Hidden until the timeline fades it in.
+    canvas.style.opacity = '0';
+    this.lastOpacity = '0';
     this.raf = requestAnimationFrame(this.loop);
+  }
+
+  // Compile every shader and upload every texture before the watch is first shown,
+  // so it doesn't stutter when it fades in. Called once the loading screen is gone,
+  // while the watch is still hidden behind the opening video.
+  warmUp() {
+    if (this.warm) return this.warm;
+    const r = this.renderer;
+    this.warm = (async () => {
+      try {
+        // The compiler skips hidden objects, so show the watch while the work is queued.
+        const root = this.watch.root;
+        const was = root.visible;
+        root.visible = true;
+        const job = r.compileAsync ? r.compileAsync(this.scene, this.camera) : r.compile(this.scene, this.camera);
+        root.visible = was;
+        await job;
+        if (this.disposed || this.watch.root.visible) return;
+        // One invisible render uploads textures and the shadow map.
+        this.watch.root.visible = true;
+        r.setScissorTest(false);
+        r.render(this.scene, this.camera);
+        r.clear();
+        this.watch.root.visible = false;
+        this.blank = true;
+      } catch (err) {
+        console.warn('Shader warm-up failed', err);
+      }
+    })();
+    return this.warm;
   }
 
   registerBackdrop(name, el) { if (el) this.backdrops[name] = el; }
@@ -260,18 +294,26 @@ export class Stage {
 
     this.watch.update(this.time, p, dt);
 
-    // Render, optionally clipped to a framed panel.
+    // Render, optionally clipped to a framed panel. Skip the GPU work entirely while
+    // the watch is faded out (for example behind the opening video).
     const r = this.renderer;
-    r.setScissorTest(false);
-    r.clear();
     const c = this.place.clip;
-    const clipped = c.w < W - 1 || c.h < H - 1 || c.x > 0.5 || c.y > 0.5;
-    if (clipped) {
-      r.setScissorTest(true);
-      r.setScissor(c.x, H - c.y - c.h, Math.max(0, c.w), Math.max(0, c.h));
+    if (root.visible) {
+      r.setScissorTest(false);
+      r.clear();
+      const clipped = c.w < W - 1 || c.h < H - 1 || c.x > 0.5 || c.y > 0.5;
+      if (clipped) {
+        r.setScissorTest(true);
+        r.setScissor(c.x, H - c.y - c.h, Math.max(0, c.w), Math.max(0, c.h));
+      }
+      r.render(this.scene, this.camera);
+      r.setScissorTest(false);
+      this.blank = false;
+    } else if (!this.blank) {
+      r.setScissorTest(false);
+      r.clear();
+      this.blank = true;
     }
-    r.render(this.scene, this.camera);
-    r.setScissorTest(false);
 
     // Backdrops behind the canvas.
     const bd = { halo: p.eHalo, warm: p.eWarm, cold: p.eCold, bench: p.eBench, blue: p.eBlue, copper: p.eCopper };
@@ -314,6 +356,7 @@ export class Stage {
   }
 
   dispose() {
+    this.disposed = true;
     cancelAnimationFrame(this.raf);
     window.removeEventListener('resize', this.onResize);
     window.removeEventListener('pointermove', this.onPointer);

@@ -108,34 +108,35 @@ function concentricGrainTexture() {
 }
 
 // Côtes de Genève: parallel waves, each band a shallow ridge with its own sheen.
+// Computed straight into pixels (reading pixels back from a canvas is very slow).
 function genevaTexture() {
   const S = 512;
   const bands = 4;
-  const [c, g] = canvas(S);
   const bw = S / bands;
-  for (let b = 0; b < bands; b++) {
-    const gr = g.createLinearGradient(b * bw, 0, (b + 1) * bw, 0);
-    gr.addColorStop(0, 'rgb(70,70,70)');
-    gr.addColorStop(0.18, 'rgb(150,150,150)');
-    gr.addColorStop(0.55, 'rgb(235,235,235)');
-    gr.addColorStop(0.92, 'rgb(150,150,150)');
-    gr.addColorStop(1, 'rgb(60,60,60)');
-    g.fillStyle = gr;
-    g.fillRect(b * bw, 0, bw, S);
+  // Brightness across one band: dark groove, rising flank, bright crest, falling flank.
+  const stops = [[0, 70], [0.18, 150], [0.55, 235], [0.92, 150], [1, 60]];
+  const profile = new Uint8ClampedArray(bw);
+  for (let i = 0; i < bw; i++) {
+    const u = i / bw;
+    let k = 0;
+    while (k < stops.length - 2 && u > stops[k + 1][0]) k++;
+    const [u0, v0] = stops[k], [u1, v1] = stops[k + 1];
+    profile[i] = v0 + ((v1 - v0) * (u - u0)) / (u1 - u0);
   }
-  // Each wave is cut by a rotating disc, so the bands are curved, not straight.
-  const img = g.getImageData(0, 0, S, S);
-  const out = g.createImageData(S, S);
+  const [c, g] = canvas(S);
+  const img = g.createImageData(S, S);
+  const d = img.data;
   for (let y = 0; y < S; y++) {
+    // Each wave is cut by a rotating disc, so the bands are curved, not straight.
     const shift = Math.round(Math.sin((y / S) * TAU) * bw * 0.18);
     for (let x = 0; x < S; x++) {
-      const sx = (x + shift + S) % S;
-      const si = (y * S + sx) * 4, di = (y * S + x) * 4;
-      out.data[di] = out.data[di + 1] = out.data[di + 2] = img.data[si];
-      out.data[di + 3] = 255;
+      const v = profile[(((x + shift) % S) + S) % S % bw];
+      const i = (y * S + x) * 4;
+      d[i] = d[i + 1] = d[i + 2] = v;
+      d[i + 3] = 255;
     }
   }
-  g.putImageData(out, 0, 0);
+  g.putImageData(img, 0, 0);
   return dataTexture(c);
 }
 
@@ -659,17 +660,20 @@ export function buildWatch() {
       iridescenceIOR: 1.6,
     }),
     screwSlot: new THREE.MeshStandardMaterial({ color: '#05070d', metalness: 1, roughness: 0.6 }),
-    // Synthetic ruby jewels: transparent and refractive.
+    // Synthetic ruby jewels: deep red under a glassy clearcoat. (Transmission would
+    // render the whole scene a second time every frame.)
     ruby: new THREE.MeshPhysicalMaterial({
-      color: '#ff3350',
+      color: '#b0001c',
       metalness: 0,
-      roughness: 0.02,
-      transmission: 1,
+      roughness: 0.05,
+      clearcoat: 1,
+      clearcoatRoughness: 0,
       ior: 1.76,
-      thickness: 0.02,
-      attenuationColor: new THREE.Color('#a80019'),
-      attenuationDistance: 0.015,
       specularIntensity: 1,
+      emissive: '#3a0008',
+      sheen: 1,
+      sheenColor: new THREE.Color('#ff3350'),
+      sheenRoughness: 0.3,
     }),
     dial: new THREE.MeshPhysicalMaterial({
       map: dialTexture(),
@@ -695,9 +699,11 @@ export function buildWatch() {
       color: '#ffffff',
       metalness: 0,
       roughness: 0,
-      transmission: 1,
+      transparent: true,
+      opacity: 0.1,
+      depthWrite: false,
+      clearcoat: 1,
       ior: 1.77,
-      thickness: 0.03,
       specularIntensity: 1,
       iridescence: 0.45,
       iridescenceIOR: 1.38,

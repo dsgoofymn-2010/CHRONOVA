@@ -1,14 +1,35 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence, useScroll, useMotionValueEvent, useTransform } from 'framer-motion';
 import { Lines, Rise, Count, EASE_OUT } from './motion.jsx';
 
 const media = (f) => `${import.meta.env.BASE_URL}media/${f}`;
 
 /* Background clip: plays only while on screen, scales gently with scroll. */
-function Clip({ src, poster, className, scrollRef }) {
+function Clip({ src, poster, className, scrollRef, lazy = false }) {
   const ref = useRef(null);
   const { scrollYProgress } = useScroll({ target: scrollRef, offset: ['start start', 'end start'] });
   const scale = useTransform(scrollYProgress, [0, 1], [1.04, 1.18]);
+  // Play only while on screen; a lazy clip doesn't download until it is about to be seen.
+  useEffect(() => {
+    const v = ref.current;
+    if (!v) return;
+    const io = new IntersectionObserver(
+      ([e]) => {
+        if (e.isIntersecting) {
+          if (lazy && v.preload !== 'auto') {
+            v.preload = 'auto';
+            v.load();
+          }
+          v.play().catch(() => {});
+        } else {
+          v.pause();
+        }
+      },
+      { rootMargin: '300px 0px' }
+    );
+    io.observe(v);
+    return () => io.disconnect();
+  }, [lazy]);
   return (
     <motion.video
       ref={ref}
@@ -16,11 +37,11 @@ function Clip({ src, poster, className, scrollRef }) {
       style={{ scale }}
       src={media(src)}
       poster={media(poster)}
-      autoPlay
+      autoPlay={!lazy}
       muted
       loop
       playsInline
-      preload="auto"
+      preload={lazy ? 'none' : 'auto'}
       aria-hidden="true"
     />
   );
@@ -186,7 +207,7 @@ export function Craft() {
         transition={{ duration: 1.4, ease: EASE_OUT }}
       >
         <div id="slot-craft" className="slot" aria-hidden="true" />
-        <Clip src="w2.mp4" poster="w2-poster.jpg" className="craft-video" scrollRef={ref} />
+        <Clip src="w2.mp4" poster="w2-poster.jpg" className="craft-video" scrollRef={ref} lazy />
         <span className="hud">Atelier 3 — Bench 07</span>
       </motion.div>
       <div className="craft-copy over">
