@@ -26,7 +26,7 @@ function softboxTexture() {
 
 // Product-photography studio: dark walls, a large overhead softbox, tall strip lights
 // for the long highlights on polished steel, and a warm bounce card from below.
-function studioEnvironment() {
+export function studioEnvironment() {
   const s = new THREE.Scene();
   const c = document.createElement('canvas');
   c.width = 4;
