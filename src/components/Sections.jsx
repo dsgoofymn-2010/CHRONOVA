@@ -332,8 +332,8 @@ export function Details() {
 export const HOTSPOTS = [
   { id: 'barrel', label: 'Mainspring barrel' },
   { id: 'tourbillon', label: 'Tourbillon cage', left: true },
-  { id: 'escape', label: 'Third wheel', left: true },
-  { id: 'balance', label: 'Crown wheel' },
+  { id: 'escape', label: 'Fourth wheel' },
+  { id: 'balance', label: 'Third wheel', left: true },
 ];
 
 export function Heart() {
