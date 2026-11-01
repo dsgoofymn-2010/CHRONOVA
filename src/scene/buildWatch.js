@@ -1038,33 +1038,84 @@ export function buildWatch() {
     crystalL.add(m);
   }
 
-  /* integrated bracelet: polished centre links, brushed outer links */
+  /*
+    Integrated bracelet: polished centre links, brushed outer links.
+    The links follow one closed path round the wrist (about 170 mm, scaled to
+    the 42 mm case) from the 12 o'clock lugs to the 6 o'clock lugs, and the two
+    halves meet at a folding clasp under the wrist.
+  */
   const bracelet = new THREE.Group();
   root.add(bracelet);
   {
     const center = new RoundedBoxGeometry(0.33, 0.232, 0.15, 4, 0.03);
     const outer = new RoundedBoxGeometry(0.42, 0.236, 0.17, 4, 0.035);
-    const R = 1.9;
-    for (const side of [1, -1]) {
-      for (let i = 0; i < 15; i++) {
-        const th = 0.07 + i * 0.13;
-        const link = new THREE.Group();
-        const widen = i < 2 ? 1.25 - i * 0.1 : 1;
-        const c = new THREE.Mesh(center, mats.steel);
-        c.scale.x = widen;
-        c.position.z = 0.01;
-        link.add(c);
-        for (const s of [-1, 1]) {
-          const o = new THREE.Mesh(outer, mats.brushed);
-          o.position.x = s * 0.39 * widen;
-          o.scale.x = widen;
-          link.add(o);
-        }
-        link.position.set(0, side * (1.2 + R * Math.sin(th)), -0.1 - R * (1 - Math.cos(th)));
-        link.rotation.x = -side * th;
+    const V = (y, z) => new THREE.Vector3(0, y, z);
+    // Wrist path in the YZ plane, starting at the top lugs and ending at the bottom lugs.
+    const path = new THREE.CatmullRomCurve3([
+      V(1.2, -0.1), V(1.55, -0.24), V(1.8, -0.58), V(1.9, -1.08), V(1.78, -1.62), V(1.38, -2.08),
+      V(0.72, -2.37), V(0, -2.45), V(-0.72, -2.37), V(-1.38, -2.08), V(-1.78, -1.62), V(-1.9, -1.08),
+      V(-1.8, -0.58), V(-1.55, -0.24), V(-1.2, -0.1),
+    ], false, 'centripetal');
+    const L = path.getLength();
+    const pitch = 0.238;
+    const claspHalf = 0.46;
+    // Orient a part so its local Y runs along the bracelet and local Z faces away from the wrist.
+    const place = (obj, dist) => {
+      const t = dist / L;
+      const P = path.getPointAt(t);
+      const T = path.getTangentAt(t);
+      obj.position.copy(P);
+      obj.rotation.x = Math.atan2(T.z, T.y);
+    };
+    const makeLink = (widen) => {
+      const link = new THREE.Group();
+      const c = new THREE.Mesh(center, mats.steel);
+      c.scale.x = widen;
+      c.position.z = 0.01;
+      link.add(c);
+      for (const sx of [-1, 1]) {
+        const o = new THREE.Mesh(outer, mats.brushed);
+        o.position.x = sx * 0.39 * widen;
+        o.scale.x = widen;
+        link.add(o);
+      }
+      return link;
+    };
+    // Same number of links on each half, so the clasp sits centred under the wrist.
+    const count = Math.floor((L / 2 - claspHalf - 0.125) / pitch) + 1;
+    for (let k = 0; k < count; k++) {
+      const d = 0.125 + k * pitch;
+      const widen = k < 2 ? 1.25 - k * 0.1 : 1; // end links flare into the case
+      for (const dist of [d, L - d]) {
+        const link = makeLink(widen);
+        place(link, dist);
         bracelet.add(link);
       }
     }
+    // Folding clasp: polished cover, brushed blade, hinge barrels and release pushers.
+    const clasp = new THREE.Group();
+    const cover = new THREE.Mesh(new RoundedBoxGeometry(0.98, claspHalf * 2 - 0.04, 0.07, 4, 0.03), mats.steel);
+    cover.position.z = 0.045;
+    clasp.add(cover);
+    const blade = new THREE.Mesh(new RoundedBoxGeometry(0.9, claspHalf * 2 - 0.1, 0.06, 4, 0.025), mats.brushed);
+    blade.position.z = -0.02;
+    clasp.add(blade);
+    const groove = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.012, 0.01), mats.brushed);
+    groove.position.z = 0.081;
+    clasp.add(groove);
+    for (const sy of [-1, 1]) {
+      const hinge = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.96, 24), mats.steel);
+      hinge.rotation.z = Math.PI / 2;
+      hinge.position.set(0, sy * (claspHalf - 0.02), 0.0);
+      clasp.add(hinge);
+    }
+    for (const sx of [-1, 1]) {
+      const pusher = new THREE.Mesh(new RoundedBoxGeometry(0.05, 0.16, 0.06, 3, 0.02), mats.steel);
+      pusher.position.set(sx * 0.505, 0, 0.02);
+      clasp.add(pusher);
+    }
+    place(clasp, L / 2);
+    bracelet.add(clasp);
   }
 
   /* holographic platform rings shown in the exploded view */
