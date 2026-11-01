@@ -2,10 +2,39 @@ import { useRef, useState } from 'react';
 import { motion, AnimatePresence, useScroll, useMotionValueEvent, useTransform } from 'framer-motion';
 import { Lines, Rise, Count, EASE_OUT } from './motion.jsx';
 
+const media = (f) => `${import.meta.env.BASE_URL}media/${f}`;
+
+/* Background clip: plays only while on screen, scales gently with scroll. */
+function Clip({ src, poster, className, scrollRef }) {
+  const ref = useRef(null);
+  const { scrollYProgress } = useScroll({ target: scrollRef, offset: ['start start', 'end start'] });
+  const scale = useTransform(scrollYProgress, [0, 1], [1.04, 1.18]);
+  return (
+    <motion.video
+      ref={ref}
+      className={className}
+      style={{ scale }}
+      src={media(src)}
+      poster={media(poster)}
+      autoPlay
+      muted
+      loop
+      playsInline
+      preload="auto"
+      aria-hidden="true"
+    />
+  );
+}
+
 /* ---------------- 01 Hero ---------------- */
 export function Hero({ ready, go }) {
+  const ref = useRef(null);
   return (
-    <section id="overview" className="hero wrap">
+    <section id="overview" className="hero wrap" ref={ref}>
+      <div className="hero-media under" aria-hidden="true">
+        <Clip src="w1.mp4" poster="w1-poster.jpg" className="hero-video" scrollRef={ref} />
+        <div className="hero-veil" />
+      </div>
       <div className="hero-copy over">
         <Rise play={ready} delay={0.1}>
           <span className="hud">Ref. CX-0 — Skeleton flying tourbillon</span>
@@ -146,8 +175,9 @@ export function Manifesto({ go }) {
 
 /* ---------------- Made by hand ---------------- */
 export function Craft() {
+  const ref = useRef(null);
   return (
-    <section id="craft" className="craft wrap">
+    <section id="craft" className="craft wrap" ref={ref}>
       <motion.div
         className="craft-panel"
         initial={{ clipPath: 'inset(12% 12% 12% 12%)' }}
@@ -156,6 +186,7 @@ export function Craft() {
         transition={{ duration: 1.4, ease: EASE_OUT }}
       >
         <div id="slot-craft" className="slot" aria-hidden="true" />
+        <Clip src="w2.mp4" poster="w2-poster.jpg" className="craft-video" scrollRef={ref} />
         <span className="hud">Atelier 3 — Bench 07</span>
       </motion.div>
       <div className="craft-copy over">

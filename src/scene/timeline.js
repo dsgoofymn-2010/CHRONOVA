@@ -8,7 +8,7 @@
 
 export const DEFAULT_POSE = {
   fit: 1, ox: 0, oy: 0, rx: 0, ry: 0, rz: 0,
-  explode: 0, hud: 0, finish: 0, gold: 0, glow: 0.35, lume: 0, speed: 1,
+  show: 1, explode: 0, hud: 0, finish: 0, gold: 0, glow: 0.35, lume: 0, speed: 1,
   exposure: 1, warm: 0, cool: 0, clip: 0, hot: 0, bracelet: 1,
   // Ambient backdrops behind the canvas (0..1 each).
   eHalo: 0, eWarm: 0, eCold: 0, eBench: 0, eBlue: 0, eCopper: 0,
@@ -16,8 +16,8 @@ export const DEFAULT_POSE = {
 
 export const TIMELINE = [
   // Hero: the full watch, three-quarter turn.
-  { section: 'overview', at: -0.2, anchor: 'slot-hero', fit: 1.02, rx: 0.12, ry: -0.42, rz: 0.04, eHalo: 1 },
-  { section: 'overview', at: 0, anchor: 'slot-hero', fit: 1.02, rx: 0.1, ry: -0.38, rz: 0.03, eHalo: 1 },
+  { section: 'overview', at: -0.2, anchor: 'slot-hero', show: 0, fit: 0.6, rx: 0.12, ry: -0.42, rz: 0.04, eHalo: 1 },
+  { section: 'overview', at: 0.25, anchor: 'slot-hero', show: 0, fit: 0.6, rx: 0.1, ry: -0.38, rz: 0.03, eHalo: 1 },
 
   // Mechanism: dive into the dial, tilt for the 4 Hz shot, explode, reassemble.
   { section: 'mechanism', at: 0, anchor: 'slot-mech', fit: 1.7, oy: 0.12, rx: 0.02, ry: -0.05, glow: 0.6, eHalo: 0.4 },
@@ -33,8 +33,8 @@ export const TIMELINE = [
   { section: 'manifesto', at: 0.25, anchor: 'slot-manifesto', fit: 0.95, rx: 0.08, ry: -0.2, rz: 0.02, eHalo: 1 },
 
   // Made by hand: lying on the bench inside the photo frame.
-  { section: 'craft', at: -0.1, anchor: 'slot-craft', fit: 0.92, rx: -0.7, ry: 0.35, rz: 0.55, clip: 1, warm: 0.6, exposure: 1.1 },
-  { section: 'craft', at: 0.5, anchor: 'slot-craft', fit: 0.92, rx: -0.6, ry: 0.5, rz: 0.75, clip: 1, warm: 0.6, exposure: 1.1 },
+  { section: 'craft', at: -0.1, anchor: 'slot-craft', show: 0, fit: 0.92, rx: -0.7, ry: 0.35, rz: 0.55, clip: 1, warm: 0.6, exposure: 1.1 },
+  { section: 'craft', at: 0.5, anchor: 'slot-craft', show: 0, fit: 0.92, rx: -0.6, ry: 0.5, rz: 0.75, clip: 1, warm: 0.6, exposure: 1.1 },
 
   // Numbers: the watch recedes into the dark behind the figures.
   { section: 'numbers', at: 0, anchor: 'slot-numbers', fit: 1.2, rx: 0.2, ry: 0.6, rz: -0.2, exposure: 0.22, glow: 0.7 },

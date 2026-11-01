@@ -179,7 +179,7 @@ export class Stage {
     const W = window.innerWidth, H = window.innerHeight;
     const worldH = 2 * Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) * this.camera.position.z;
     const px2w = worldH / H;
-    const s = (this.place.h * px2w * p.fit) / REF;
+    const s = Math.max(0.0001, ((this.place.h * px2w * p.fit) / REF) * p.show);
 
     // Pointer parallax.
     this.pointer.sx = lerp(this.pointer.sx, this.pointer.x, 0.05);
@@ -187,6 +187,7 @@ export class Stage {
     const idle = this.reduced ? 0 : Math.sin(this.time * 0.6) * 0.025;
 
     const root = this.watch.root;
+    root.visible = p.show > 0.01;
     root.scale.setScalar(s);
     root.rotation.set(p.rx + this.pointer.sy * 0.08 + idle, p.ry + this.pointer.sx * 0.12, p.rz);
     root.position.set(
