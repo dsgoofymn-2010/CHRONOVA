@@ -148,11 +148,15 @@ export class Stage {
   // Convert each keyframe into an absolute scroll position.
   measure() {
     const vh = window.innerHeight;
-    this.keyY = TIMELINE.map((k) => {
+    const keyed = TIMELINE.map((k, i) => {
       const el = document.getElementById(k.section);
       const top = el ? el.getBoundingClientRect().top + window.scrollY : 0;
-      return top + k.at * vh;
+      return { k, i, y: top + k.at * vh };
     });
+    // Sort by scroll position (stable), so keyframes from neighbouring sections never cross.
+    keyed.sort((a, b) => a.y - b.y || a.i - b.i);
+    this.keys = keyed.map((e) => e.k);
+    this.keyY = keyed.map((e) => e.y);
   }
 
   rectOf(id) {
@@ -165,7 +169,7 @@ export class Stage {
   // Target pose + target screen placement for the current scroll position.
   target() {
     const y = window.scrollY;
-    const ks = TIMELINE, ys = this.keyY;
+    const ks = this.keys || TIMELINE, ys = this.keyY;
     let i = 0;
     while (i < ks.length - 1 && ys[i + 1] <= y) i++;
     const a = ks[i];
@@ -222,7 +226,9 @@ export class Stage {
     const W = window.innerWidth, H = window.innerHeight;
     const worldH = 2 * Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) * this.camera.position.z;
     const px2w = worldH / H;
-    const s = Math.max(0.0001, ((this.place.h * px2w * p.fit) / REF) * p.show);
+    const show = Math.min(1, Math.max(0, p.show));
+    const appear = show * show * (3 - 2 * show); // eased fade value
+    const s = ((this.place.h * px2w * p.fit) / REF) * (0.9 + 0.1 * appear);
 
     // Pointer parallax.
     this.pointer.sx = lerp(this.pointer.sx, this.pointer.x, 0.05);
@@ -230,12 +236,18 @@ export class Stage {
     const idle = this.reduced ? 0 : Math.sin(this.time * 0.6) * 0.025;
 
     const root = this.watch.root;
-    root.visible = p.show > 0.01;
+    root.visible = show > 0.003;
+    // The canvas holds only the watch, so its opacity fades the whole model (shadows included).
+    const op = appear.toFixed(3);
+    if (op !== this.lastOpacity) {
+      this.canvas.style.opacity = op;
+      this.lastOpacity = op;
+    }
     root.scale.setScalar(s);
     root.rotation.set(p.rx + this.pointer.sy * 0.08 + idle, p.ry + this.pointer.sx * 0.12, p.rz);
     root.position.set(
       (this.place.cx - W / 2) * px2w + p.ox * s,
-      -(this.place.cy - H / 2) * px2w + p.oy * s + idle * 0.4 * s,
+      -(this.place.cy - H / 2) * px2w + p.oy * s + idle * 0.4 * s - (1 - appear) * 0.12 * s,
       0
     );
 
@@ -280,7 +292,7 @@ export class Stage {
       const y = (-this.v.y * 0.5 + 0.5) * H;
       const inside = x > c.x && x < c.x + c.w && y > c.y && y < c.y + c.h;
       el.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0)`;
-      el.style.opacity = (inside ? p.hot : 0).toFixed(3);
+      el.style.opacity = (inside ? p.hot * appear : 0).toFixed(3);
     }
   }
 

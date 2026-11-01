@@ -33,8 +33,8 @@ export const TIMELINE = [
   { section: 'manifesto', at: 0.25, anchor: 'slot-manifesto', fit: 0.95, rx: 0.08, ry: -0.2, rz: 0.02, eHalo: 1 },
 
   // Made by hand: lying on the bench inside the photo frame.
-  { section: 'craft', at: -0.1, anchor: 'slot-craft', show: 0, fit: 0.92, rx: -0.7, ry: 0.35, rz: 0.55, clip: 1, warm: 0.6, exposure: 1.1 },
-  { section: 'craft', at: 0.5, anchor: 'slot-craft', show: 0, fit: 0.92, rx: -0.6, ry: 0.5, rz: 0.75, clip: 1, warm: 0.6, exposure: 1.1 },
+  { section: 'craft', at: -0.1, anchor: 'slot-manifesto', show: 0, fit: 0.9, rx: 0.1, ry: -0.1, rz: 0.02, eHalo: 0.3 },
+  { section: 'craft', at: 0.5, anchor: 'slot-numbers', show: 0, fit: 1.1, rx: 0.2, ry: 0.5, rz: -0.18, exposure: 0.22, glow: 0.7 },
 
   // Numbers: the watch recedes into the dark behind the figures.
   { section: 'numbers', at: 0, anchor: 'slot-numbers', fit: 1.2, rx: 0.2, ry: 0.6, rz: -0.2, exposure: 0.22, glow: 0.7 },
@@ -51,13 +51,17 @@ export const TIMELINE = [
   { section: 'details', at: 4.0, anchor: 'slot-chapter', fit: 1.1, rx: 0.1, ry: -0.7, rz: 0.25, finish: 0.65, cool: 1, lume: 1, exposure: 0.55, eBlue: 1 },
   { section: 'details', at: 4.4, anchor: 'slot-chapter-macro', fit: 3.4, ox: -0.02, oy: 0.62, rx: -0.35, ry: 0.25, rz: 0.4, glow: 1.2, speed: 3, exposure: 1.05, eCopper: 1 },
   { section: 'details', at: 5.2, anchor: 'slot-chapter-macro', fit: 3.6, ox: -0.02, oy: 0.62, rx: -0.3, ry: 0.32, rz: 0.5, glow: 1.2, speed: 3, exposure: 1.05, eCopper: 1 },
+  // Fade out before the framed panel, so the panel edge never cuts the watch.
+  { section: 'details', at: 5.55, anchor: 'slot-chapter-macro', show: 0, fit: 3.3, ox: -0.02, oy: 0.62, rx: -0.3, ry: 0.36, rz: 0.55, glow: 1.2, speed: 3, exposure: 1.05, eCopper: 0.4 },
 
-  // Open heart: framed macro of the movement in gold, with pinned labels.
-  { section: 'heart', at: -0.25, anchor: 'slot-heart', fit: 1.55, oy: 0.18, rx: -0.05, ry: 0.05, gold: 1, glow: 0.9, clip: 1, hot: 0, exposure: 1.15 },
+  // Open heart: framed macro of the movement in gold, with pinned labels. Fades in and out inside the frame.
+  { section: 'heart', at: -0.25, anchor: 'slot-heart', show: 0, fit: 1.5, oy: 0.18, rx: -0.08, ry: 0.08, gold: 1, glow: 0.9, clip: 1, hot: 0, exposure: 1.15 },
   { section: 'heart', at: 0.1, anchor: 'slot-heart', fit: 1.6, oy: 0.18, rx: -0.02, ry: 0.05, gold: 1, glow: 0.9, clip: 1, hot: 1, exposure: 1.15 },
-  { section: 'heart', at: 0.6, anchor: 'slot-heart', fit: 1.6, oy: 0.18, rx: -0.02, ry: -0.05, gold: 1, glow: 0.9, clip: 1, hot: 1, exposure: 1.15 },
+  { section: 'heart', at: 0.2, anchor: 'slot-heart', fit: 1.6, oy: 0.18, rx: -0.02, ry: -0.05, gold: 1, glow: 0.9, clip: 1, hot: 1, exposure: 1.15 },
+  { section: 'heart', at: 0.45, anchor: 'slot-heart', show: 0, fit: 1.66, oy: 0.18, rx: -0.02, ry: -0.08, gold: 1, glow: 0.9, clip: 1, hot: 0, exposure: 1.15 },
 
-  // Pure: blacked-out watch, face on, behind the outline type.
-  { section: 'pure', at: -0.3, anchor: 'slot-pure', fit: 1, finish: 1, exposure: 0.85, glow: 0.4, eHalo: 0.25 },
-  { section: 'pure', at: 0.4, anchor: 'slot-pure', fit: 1, finish: 1, exposure: 0.85, glow: 0.4, eHalo: 0.25 },
+  // Pure: blacked-out watch, face on, behind the outline type. Fades in on its own.
+  { section: 'pure', at: 0, anchor: 'slot-pure', show: 0, fit: 1, finish: 1, exposure: 0.85, glow: 0.4, eHalo: 0 },
+  { section: 'pure', at: 0.35, anchor: 'slot-pure', fit: 1, finish: 1, exposure: 0.85, glow: 0.4, eHalo: 0.25 },
+  { section: 'pure', at: 0.7, anchor: 'slot-pure', fit: 1, finish: 1, exposure: 0.85, glow: 0.4, eHalo: 0.25 },
 ];
